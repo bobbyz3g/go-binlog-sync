@@ -4,3 +4,12 @@ log:
 server:
   host: 0.0.0.0
   port: 8081
+
+source:
+  serverID: 32
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  password: ""
+  binlog: ""
+  position: 3

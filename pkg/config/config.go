@@ -4,6 +4,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+
 	"sigs.k8s.io/yaml"
 )
 
@@ -25,12 +26,25 @@ type ServerConfig struct {
 	Port int `json:"port" yaml:"port"`
 }
 
+// SourceConfig defines configuration settings for a data source, including options required for initialization and connection.
+type SourceConfig struct {
+	ServerID uint32 `json:"serverID" yaml:"serverID"`
+	Host     string `json:"host" yaml:"host"`
+	Port     uint16 `json:"port" yaml:"port"`
+	User     string `json:"user" yaml:"user"`
+	Password string `json:"password" yaml:"password"`
+	Binlog   string `json:"binlog" yaml:"binlog"`
+	Position uint32 `json:"position" yaml:"position"`
+	GTID     string `json:"gtid" yaml:"gtid"`
+}
+
 // Config represents the complete service configuration
 type Config struct {
 	// Log contains logging-related configuration
 	Log LogConfig `json:"log" yaml:"log"`
 	// Server contains server-related configuration
 	Server ServerConfig `json:"server" yaml:"server"`
+	Source SourceConfig `json:"source" yaml:"source"`
 }
 
 func NewConfigFromFile(path string) (*Config, error) {

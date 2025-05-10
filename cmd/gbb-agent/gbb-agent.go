@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/bobbyz3g/go-binlog-backup/pkg/config"
 	"log/slog"
 	"net/http"
+
+	"github.com/bobbyz3g/go-binlog-backup/pkg/config"
 )
 
 func main() {
