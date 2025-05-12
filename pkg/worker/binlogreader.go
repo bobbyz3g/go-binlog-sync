@@ -45,6 +45,7 @@ func (b *BinlogReader) Read(ctx context.Context) (chan *replication.BinlogEvent,
 		for {
 			select {
 			case <-ctx.Done():
+				syncer.Close()
 				b.lg.Info("BinlogReader stopped")
 				return
 			default:

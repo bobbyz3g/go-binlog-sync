@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"fmt"
 	"log/slog"
-	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/bobbyz3g/go-binlog-backup/pkg/config"
+	"github.com/bobbyz3g/go-binlog-backup/pkg/worker"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -23,11 +27,30 @@ func main() {
 		slog.String("host", cfg.Server.Host),
 		slog.Int("port", cfg.Server.Port))
 
-	err = http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		lg.Info("Received request", slog.String("method", r.Method), slog.String("url", r.URL.String()))
-		w.WriteHeader(http.StatusOK)
-	}))
-	if err != nil {
-		lg.Error("Listen and server failed", slog.String("error", err.Error()))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle shutdown signals
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-sigCh
+		lg.Info("Received shutdown signal", slog.String("signal", sig.String()))
+		cancel()
+	}()
+
+	server := NewServer(lg, &cfg.Server)
+	w := worker.NewWorker(lg, cfg.Source)
+
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		return server.ListenAndServe(ctx)
+	})
+	g.Go(func() error {
+		return w.Run(ctx)
+	})
+
+	if err := g.Wait(); err != nil {
+		lg.Error("Wait error", slog.String("err", err.Error()))
 	}
 }
