@@ -22,23 +22,17 @@ func NewWorker(lg *slog.Logger, cfg config.SourceConfig) *Worker {
 }
 
 func (w *Worker) Run(ctx context.Context) error {
-	w.lg.Info("Worker started")
+	w.lg.Info("worker started")
 	reader := NewBinlogReader(w.lg, w.cfg)
 	events, err := reader.Read(ctx)
 	if err != nil {
 		return fmt.Errorf("read binlog: %w", err)
 	}
 
-reading:
-	for {
-		select {
-		case <-ctx.Done():
-			w.lg.Info("Worker stopped, err: %w", ctx.Err())
-			break reading
-		case e := <-events:
-			e.Dump(os.Stdout)
-		}
+	for e := range events {
+		e.Dump(os.Stdout)
 	}
+	w.lg.Info("worker stopped")
 
 	return nil
 }

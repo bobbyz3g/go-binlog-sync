@@ -73,13 +73,14 @@ func (b *BinlogReader) Read(ctx context.Context) (chan *replication.BinlogEvent,
 			select {
 			case <-ctx.Done():
 				syncer.Close()
-				b.lg.Info("BinlogReader stopped")
+				b.lg.Info("binlog reader stopped")
+				close(events)
 				return
 			default:
 			}
 			e, err := streamer.GetEvent(ctx)
 			if err != nil {
-				b.lg.Error("BinlogReader GetEvent failed", slog.String("err", err.Error()))
+				b.lg.Error("get event failed", slog.String("err", err.Error()))
 				continue
 			}
 			events <- e

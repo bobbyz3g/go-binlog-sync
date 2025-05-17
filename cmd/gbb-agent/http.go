@@ -36,7 +36,7 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 
 	errC := make(chan error)
 	go func() {
-		s.lg.Info("Server started", slog.String("host", s.cfg.Host), slog.Int("port", s.cfg.Port))
+		s.lg.Info("server started", slog.String("host", s.cfg.Host), slog.Int("port", s.cfg.Port))
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errC <- fmt.Errorf("listen and serve: %w", err)
 		}
@@ -48,7 +48,7 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 	case <-ctx.Done():
 	}
 
-	s.lg.Info("Shutting down server...")
+	s.lg.Info("shutting down server...")
 
 	sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

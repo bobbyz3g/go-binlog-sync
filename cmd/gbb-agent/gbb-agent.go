@@ -23,9 +23,6 @@ func main() {
 	}
 
 	lg := config.NewLogger(cfg.Log)
-	lg.Info("Server started",
-		slog.String("host", cfg.Server.Host),
-		slog.Int("port", cfg.Server.Port))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -35,7 +32,7 @@ func main() {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigCh
-		lg.Info("Received shutdown signal", slog.String("signal", sig.String()))
+		lg.Info("received shutdown signal", slog.String("signal", sig.String()))
 		cancel()
 	}()
 
@@ -51,6 +48,6 @@ func main() {
 	})
 
 	if err := g.Wait(); err != nil {
-		lg.Error("Wait error", slog.String("err", err.Error()))
+		lg.Error("wait error", slog.String("err", err.Error()))
 	}
 }
