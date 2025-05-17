@@ -28,14 +28,17 @@ type ServerConfig struct {
 
 // SourceConfig defines configuration settings for a data source, including options required for initialization and connection.
 type SourceConfig struct {
-	ServerID uint32 `json:"serverID" yaml:"serverID"`
-	Host     string `json:"host" yaml:"host"`
-	Port     uint16 `json:"port" yaml:"port"`
-	User     string `json:"user" yaml:"user"`
-	Password string `json:"password" yaml:"password"`
-	Binlog   string `json:"binlog" yaml:"binlog"`
-	Position uint32 `json:"position" yaml:"position"`
-	GTID     string `json:"gtid" yaml:"gtid"`
+	// Flavor is "mysql" or "mariadb", if not set, use "mysql" default.
+	Flavor      string `json:"flavor" yaml:"flavor"`
+	ServerID    uint32 `json:"serverID" yaml:"serverID"`
+	Host        string `json:"host" yaml:"host"`
+	Port        uint16 `json:"port" yaml:"port"`
+	User        string `json:"user" yaml:"user"`
+	Password    string `json:"password" yaml:"password"`
+	Binlog      string `json:"binlog" yaml:"binlog"`
+	Position    uint32 `json:"position" yaml:"position"`
+	GTIDSet     string `json:"gtidSet" yaml:"gtidSet"`
+	GTIDEnabled bool   `json:"gtidEnabled" yaml:"gtidEnabled"`
 }
 
 // Config represents the complete service configuration

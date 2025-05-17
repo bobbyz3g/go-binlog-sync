@@ -12,4 +12,6 @@ source:
   user: root
   password: ""
   binlog: ""
-  position: 3
+  position: 0
+  gtidEnabled: true
+  gtidSet: ""
