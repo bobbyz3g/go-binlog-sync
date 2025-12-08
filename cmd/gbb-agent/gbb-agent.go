@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/bobbyz3g/go-binlog-backup/pkg/config"
-	"github.com/bobbyz3g/go-binlog-backup/pkg/worker"
+	"github.com/bobbyz3g/go-binlog-sync/pkg/config"
+	"github.com/bobbyz3g/go-binlog-sync/pkg/worker"
 	"golang.org/x/sync/errgroup"
 )
 

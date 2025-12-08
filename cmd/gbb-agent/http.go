@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bobbyz3g/go-binlog-backup/pkg/config"
+	"github.com/bobbyz3g/go-binlog-sync/pkg/config"
 )
 
 type Server struct {

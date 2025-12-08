@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/bobbyz3g/go-binlog-backup/pkg/config"
+	"github.com/bobbyz3g/go-binlog-sync/pkg/config"
 )
 
 type Worker struct {

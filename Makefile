@@ -7,3 +7,9 @@ linux-amd64:
 linux-arm64:
 	GOOS=linux GOARCH=arm64 go build -o bin/gbb-linux-arm64 ./cmd/gbb
 	GOOS=linux GOARCH=arm64 go build -o bin/gbb-agent-linux-arm64 ./cmd/gbb-agent
+
+clean:
+	rm -rf bin/
+
+test:
+	go test -v ./...

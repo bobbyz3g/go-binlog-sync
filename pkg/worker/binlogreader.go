@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/bobbyz3g/go-binlog-backup/pkg/config"
+	"github.com/bobbyz3g/go-binlog-sync/pkg/config"
 	"github.com/go-mysql-org/go-mysql/mysql"
 	"github.com/go-mysql-org/go-mysql/replication"
 )
