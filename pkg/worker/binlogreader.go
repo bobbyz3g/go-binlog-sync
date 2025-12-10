@@ -7,17 +7,16 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/bobbyz3g/go-binlog-sync/pkg/config"
 	"github.com/go-mysql-org/go-mysql/mysql"
 	"github.com/go-mysql-org/go-mysql/replication"
 )
 
 type BinlogReader struct {
 	lg  *slog.Logger
-	cfg config.SourceConfig
+	cfg SourceConfig
 }
 
-func NewBinlogReader(lg *slog.Logger, source config.SourceConfig) *BinlogReader {
+func NewBinlogReader(lg *slog.Logger, source SourceConfig) *BinlogReader {
 	return &BinlogReader{
 		cfg: source,
 		lg:  lg,

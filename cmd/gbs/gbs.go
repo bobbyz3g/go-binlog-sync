@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/bobbyz3g/go-binlog-sync/pkg/config"
 	"github.com/bobbyz3g/go-binlog-sync/pkg/worker"
 	"golang.org/x/sync/errgroup"
 )
@@ -17,12 +16,12 @@ func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
 	flag.Parse()
 
-	cfg, err := config.NewConfigFromFile(*configPath)
+	cfg, err := worker.NewConfigFromFile(*configPath)
 	if err != nil {
 		panic(err)
 	}
 
-	lg := config.NewLogger(cfg.Log)
+	lg := worker.NewLogger(cfg.Log)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -50,4 +49,8 @@ func main() {
 	if err := g.Wait(); err != nil {
 		lg.Error("wait error", slog.String("err", err.Error()))
 	}
+}
+
+func run(ctx context.Context) (err error) {
+	return nil
 }

@@ -10,16 +10,16 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bobbyz3g/go-binlog-sync/pkg/config"
+	"github.com/bobbyz3g/go-binlog-sync/pkg/worker"
 )
 
 type Server struct {
 	lg  *slog.Logger
-	cfg *config.ServerConfig
+	cfg *worker.ServerConfig
 	mux *http.ServeMux
 }
 
-func NewServer(lg *slog.Logger, cfg *config.ServerConfig) *Server {
+func NewServer(lg *slog.Logger, cfg *worker.ServerConfig) *Server {
 	return &Server{
 		lg:  lg,
 		cfg: cfg,

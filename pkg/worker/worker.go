@@ -5,16 +5,14 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-
-	"github.com/bobbyz3g/go-binlog-sync/pkg/config"
 )
 
 type Worker struct {
 	lg  *slog.Logger
-	cfg config.SourceConfig
+	cfg SourceConfig
 }
 
-func NewWorker(lg *slog.Logger, cfg config.SourceConfig) *Worker {
+func NewWorker(lg *slog.Logger, cfg SourceConfig) *Worker {
 	return &Worker{
 		cfg: cfg,
 		lg:  lg,
