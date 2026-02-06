@@ -1,21 +1,39 @@
-package worker
+package context
 
 import (
-	"io"
 	"log/slog"
 	"os"
+	"sync"
 
+	"github.com/bobbyz3g/go-binlog-sync/pkg/logger"
 	"sigs.k8s.io/yaml"
 )
 
-// LogConfig represents logging configuration
-type LogConfig struct {
-	// Level defines the logging level (e.g., debug, info, warn, error)
-	Level string `json:"level" yaml:"level"`
-	// FilePath defines the path where log files will be stored
-	FilePath string `json:"filePath" yaml:"filePath"`
-	// Format defines the log format (e.g., json, text)
-	Format string `json:"format" yaml:"format"`
+var (
+	globalContext *SyncContext
+	once          sync.Once
+)
+
+// SyncContext has the general, global state of migration. It is used by
+// all components throughout the sync process.
+type SyncContext struct {
+	Log *slog.Logger
+}
+
+// InitContext initializes the global SyncContext.
+// It should be called only once at the beginning of the application.
+func InitContext(cfg *Config) {
+	once.Do(func() {
+		globalContext = &SyncContext{
+			Log: logger.NewLogger(cfg.Log),
+		}
+	})
+}
+
+// Context returns the global SyncContext.
+// It assumes InitContext has been called.
+func Context() *SyncContext {
+	return globalContext
 }
 
 // ServerConfig represents server listening configuration
@@ -41,13 +59,23 @@ type SourceConfig struct {
 	GTIDEnabled bool   `json:"gtidEnabled" yaml:"gtidEnabled"`
 }
 
+// DestinationConfig defines configuration settings for a destination database connection.
+type DestinationConfig struct {
+	Host     string `json:"host" yaml:"host"`
+	Port     uint16 `json:"port" yaml:"port"`
+	User     string `json:"user" yaml:"user"`
+	Password string `json:"password" yaml:"password"`
+}
+
 // Config represents the complete service configuration
 type Config struct {
 	// Log contains logging-related configuration
-	Log LogConfig `json:"log" yaml:"log"`
+	Log logger.LogConfig `json:"log" yaml:"log"`
 	// Server contains server-related configuration
 	Server ServerConfig `json:"server" yaml:"server"`
 	Source SourceConfig `json:"source" yaml:"source"`
+	// Destination contains destination database connection configuration
+	Destination DestinationConfig `json:"destination" yaml:"destination"`
 }
 
 func NewConfigFromFile(path string) (*Config, error) {
@@ -57,7 +85,7 @@ func NewConfigFromFile(path string) (*Config, error) {
 	}
 
 	config := &Config{
-		Log: LogConfig{
+		Log: logger.LogConfig{
 			Level: "info",
 		},
 		Server: ServerConfig{
@@ -70,49 +98,4 @@ func NewConfigFromFile(path string) (*Config, error) {
 	}
 
 	return config, nil
-}
-
-// parseLogLevel converts string level to slog.Level
-func parseLogLevel(level string) slog.Level {
-	switch level {
-	case "debug":
-		return slog.LevelDebug
-	case "info":
-		return slog.LevelInfo
-	case "warn":
-		return slog.LevelWarn
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelInfo
-	}
-}
-
-// NewLogger creates a new slog.Logger based on LogConfig
-func NewLogger(c LogConfig) *slog.Logger {
-	var (
-		w       io.Writer
-		err     error
-		handler slog.Handler
-	)
-	if c.FilePath != "" {
-		w, err = os.OpenFile(c.FilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-		if err != nil {
-			panic(err.Error())
-		}
-	} else {
-		w = os.Stderr
-	}
-
-	opts := &slog.HandlerOptions{
-		Level: parseLogLevel(c.Level),
-	}
-
-	if c.Format == "json" {
-		handler = slog.NewJSONHandler(w, opts)
-	} else {
-		handler = slog.NewTextHandler(w, opts)
-	}
-
-	return slog.New(handler)
 }

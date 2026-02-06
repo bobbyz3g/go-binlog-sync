@@ -4,31 +4,35 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
+
+	context2 "github.com/bobbyz3g/go-binlog-sync/pkg/context"
 )
 
 type Worker struct {
-	lg  *slog.Logger
-	cfg SourceConfig
+	lg     *slog.Logger
+	source context2.SourceConfig
+	dest   context2.DestinationConfig
 }
 
-func NewWorker(lg *slog.Logger, cfg SourceConfig) *Worker {
+func NewWorker(lg *slog.Logger, source context2.SourceConfig, dest context2.DestinationConfig) *Worker {
 	return &Worker{
-		cfg: cfg,
-		lg:  lg,
+		source: source,
+		dest:   dest,
+		lg:     lg,
 	}
 }
 
 func (w *Worker) Run(ctx context.Context) error {
 	w.lg.Info("worker started")
-	reader := NewBinlogReader(w.lg, w.cfg)
+	reader := NewBinlogReader(w.lg, w.source)
 	events, err := reader.Read(ctx)
 	if err != nil {
 		return fmt.Errorf("read binlog: %w", err)
 	}
 
-	for e := range events {
-		e.Dump(os.Stdout)
+	writer := NewEventWriter(w.lg, w.dest)
+	if err := writer.Write(ctx, events); err != nil {
+		return fmt.Errorf("write events: %w", err)
 	}
 	w.lg.Info("worker stopped")
 

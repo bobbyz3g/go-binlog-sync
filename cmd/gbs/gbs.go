@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	pkgctx "github.com/bobbyz3g/go-binlog-sync/pkg/context"
 	"github.com/bobbyz3g/go-binlog-sync/pkg/worker"
 	"golang.org/x/sync/errgroup"
 )
@@ -16,12 +17,16 @@ func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
 	flag.Parse()
 
-	cfg, err := worker.NewConfigFromFile(*configPath)
+	cfg, err := pkgctx.NewConfigFromFile(*configPath)
 	if err != nil {
 		panic(err)
 	}
 
-	lg := worker.NewLogger(cfg.Log)
+	// Initialize the global worker context with the configuration.
+	pkgctx.InitContext(cfg)
+
+	// Get the logger from the global context.
+	lg := pkgctx.Context().Log
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -36,7 +41,7 @@ func main() {
 	}()
 
 	server := NewServer(lg, &cfg.Server)
-	w := worker.NewWorker(lg, cfg.Source)
+	w := worker.NewWorker(lg, cfg.Source, cfg.Destination)
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
