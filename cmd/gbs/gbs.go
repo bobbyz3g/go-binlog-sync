@@ -52,7 +52,7 @@ func main() {
 	})
 
 	if err := g.Wait(); err != nil {
-		lg.Error("wait error", slog.String("err", err.Error()))
+		lg.Error("sync failed", slog.String("err", err.Error()))
 	}
 }
 

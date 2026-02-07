@@ -9,6 +9,7 @@ import (
 	"time"
 
 	pkgctx "github.com/bobbyz3g/go-binlog-sync/pkg/context"
+	"github.com/bobbyz3g/go-binlog-sync/pkg/sql"
 	"github.com/go-mysql-org/go-mysql/client"
 	"github.com/go-mysql-org/go-mysql/mysql"
 	"github.com/go-mysql-org/go-mysql/replication"
@@ -90,9 +91,9 @@ func (w *EventWriter) applyQueryEvent(ctx context.Context, ev *replication.Query
 	case "begin", "commit", "rollback":
 		return nil
 	}
-	if len(ev.Schema) > 0 {
+	if len(ev.Schema) > 0 && !sql.IsCreateDatabase(ev.Query) {
 		if err := w.conn.UseDB(string(ev.Schema)); err != nil {
-			return fmt.Errorf("use schema %s: %w", string(ev.Schema), err)
+			return fmt.Errorf("use schema %s(%s): %w", string(ev.Schema), ev.Query, err)
 		}
 	}
 	return w.exec(ctx, query)
