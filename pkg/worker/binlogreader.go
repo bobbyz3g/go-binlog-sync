@@ -24,7 +24,7 @@ func NewBinlogReader(lg *slog.Logger, source context2.SourceConfig) *BinlogReade
 	}
 }
 
-func (b *BinlogReader) Read(ctx context.Context) (chan *replication.BinlogEvent, error) {
+func (b *BinlogReader) Read(ctx context.Context) (chan *StreamEvent, error) {
 	var flavor string
 	switch strings.ToLower(b.cfg.Flavor) {
 	case "mysql", "":
@@ -66,7 +66,7 @@ func (b *BinlogReader) Read(ctx context.Context) (chan *replication.BinlogEvent,
 		return nil, fmt.Errorf("start sync: %w", err)
 	}
 
-	events := make(chan *replication.BinlogEvent)
+	events := make(chan *StreamEvent)
 
 	go func() {
 		for {
@@ -83,9 +83,30 @@ func (b *BinlogReader) Read(ctx context.Context) (chan *replication.BinlogEvent,
 				b.lg.Error("get event failed", slog.String("err", err.Error()))
 				continue
 			}
-			events <- e
+			events <- &StreamEvent{
+				Event:    e,
+				Position: syncer.GetNextPosition(),
+				GTIDSet:  extractGTIDSet(e),
+			}
 		}
 	}()
 
 	return events, nil
+}
+
+func extractGTIDSet(e *replication.BinlogEvent) string {
+	if e == nil {
+		return ""
+	}
+	switch ev := e.Event.(type) {
+	case *replication.QueryEvent:
+		if ev.GSet != nil {
+			return ev.GSet.String()
+		}
+	case *replication.XIDEvent:
+		if ev.GSet != nil {
+			return ev.GSet.String()
+		}
+	}
+	return ""
 }

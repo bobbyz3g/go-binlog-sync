@@ -9,21 +9,27 @@ import (
 )
 
 type Worker struct {
-	lg     *slog.Logger
-	source context2.SourceConfig
-	dest   context2.DestinationConfig
+	lg       *slog.Logger
+	source   context2.SourceConfig
+	dest     context2.DestinationConfig
+	stateCfg context2.StateConfig
 }
 
-func NewWorker(lg *slog.Logger, source context2.SourceConfig, dest context2.DestinationConfig) *Worker {
+func NewWorker(lg *slog.Logger, source context2.SourceConfig, dest context2.DestinationConfig, stateCfg context2.StateConfig) *Worker {
 	return &Worker{
-		source: source,
-		dest:   dest,
-		lg:     lg,
+		source:   source,
+		dest:     dest,
+		stateCfg: stateCfg,
+		lg:       lg,
 	}
 }
 
 func (w *Worker) Run(ctx context.Context) error {
 	w.lg.Info("worker started")
+	recorder, err := w.initStateRecorder(ctx)
+	if err != nil {
+		return err
+	}
 	if err := w.precheckSource(ctx); err != nil {
 		return err
 	}
@@ -34,7 +40,7 @@ func (w *Worker) Run(ctx context.Context) error {
 		return fmt.Errorf("read binlog: %w", err)
 	}
 
-	writer := NewEventWriter(w.lg, w.dest)
+	writer := NewEventWriter(w.lg, w.dest, recorder)
 	if err := writer.Write(ctx, events); err != nil {
 		return fmt.Errorf("write events: %w", err)
 	}

@@ -21,3 +21,17 @@ destination:
   port: 3306
   user: root
   password: ""
+
+state:
+  enabled: false
+  type: file # file/mysql
+  everyEvents: 100
+  filePath: gbs.state.json
+  mysql:
+    host: 127.0.0.1
+    port: 3306
+    user: root
+    password: ""
+    database: ""
+    table: gbs_sync_state
+    sourceID: ""

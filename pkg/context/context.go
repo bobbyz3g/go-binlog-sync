@@ -67,6 +67,31 @@ type DestinationConfig struct {
 	Password string `json:"password" yaml:"password"`
 }
 
+// StateMySQLConfig defines MySQL table storage for sync state.
+type StateMySQLConfig struct {
+	Host     string `json:"host" yaml:"host"`
+	Port     uint16 `json:"port" yaml:"port"`
+	User     string `json:"user" yaml:"user"`
+	Password string `json:"password" yaml:"password"`
+	Database string `json:"database" yaml:"database"`
+	Table    string `json:"table" yaml:"table"`
+	SourceID string `json:"sourceID" yaml:"sourceID"`
+}
+
+// StateConfig defines state persistence configuration.
+type StateConfig struct {
+	// Enabled toggles state persistence.
+	Enabled bool `json:"enabled" yaml:"enabled"`
+	// Type selects the state backend (file/mysql).
+	Type string `json:"type" yaml:"type"`
+	// EveryEvents controls how many events between checkpoints.
+	EveryEvents int `json:"everyEvents" yaml:"everyEvents"`
+	// FilePath is the state file path when Type=file.
+	FilePath string `json:"filePath" yaml:"filePath"`
+	// MySQL defines the state table connection when Type=mysql.
+	MySQL StateMySQLConfig `json:"mysql" yaml:"mysql"`
+}
+
 // Config represents the complete service configuration
 type Config struct {
 	// Log contains logging-related configuration
@@ -76,6 +101,8 @@ type Config struct {
 	Source SourceConfig `json:"source" yaml:"source"`
 	// Destination contains destination database connection configuration
 	Destination DestinationConfig `json:"destination" yaml:"destination"`
+	// State contains sync state persistence configuration
+	State StateConfig `json:"state" yaml:"state"`
 }
 
 func NewConfigFromFile(path string) (*Config, error) {
@@ -91,6 +118,16 @@ func NewConfigFromFile(path string) (*Config, error) {
 		Server: ServerConfig{
 			Host: "127.0.0.1",
 			Port: 8080,
+		},
+		State: StateConfig{
+			Enabled:     false,
+			Type:        "file",
+			EveryEvents: 100,
+			FilePath:    "gbs.state.json",
+			MySQL: StateMySQLConfig{
+				Port:  3306,
+				Table: "gbs_sync_state",
+			},
 		},
 	}
 	if err := yaml.Unmarshal(data, config); err != nil {

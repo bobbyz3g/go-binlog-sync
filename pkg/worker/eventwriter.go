@@ -10,6 +10,7 @@ import (
 
 	pkgctx "github.com/bobbyz3g/go-binlog-sync/pkg/context"
 	"github.com/bobbyz3g/go-binlog-sync/pkg/sql"
+	"github.com/bobbyz3g/go-binlog-sync/pkg/state"
 	"github.com/go-mysql-org/go-mysql/client"
 	"github.com/go-mysql-org/go-mysql/mysql"
 	"github.com/go-mysql-org/go-mysql/replication"
@@ -20,21 +21,24 @@ type EventWriter struct {
 	cfg         pkgctx.DestinationConfig
 	conn        *client.Conn
 	columnCache map[string][]string
+	recorder    *state.Recorder
 }
 
-func NewEventWriter(lg *slog.Logger, cfg pkgctx.DestinationConfig) *EventWriter {
+func NewEventWriter(lg *slog.Logger, cfg pkgctx.DestinationConfig, recorder *state.Recorder) *EventWriter {
 	return &EventWriter{
 		lg:          lg,
 		cfg:         cfg,
 		columnCache: make(map[string][]string),
+		recorder:    recorder,
 	}
 }
 
-func (w *EventWriter) Write(ctx context.Context, events <-chan *replication.BinlogEvent) error {
+func (w *EventWriter) Write(ctx context.Context, events <-chan *StreamEvent) error {
 	if err := w.connect(ctx); err != nil {
 		return err
 	}
 	defer w.conn.Close()
+	defer w.flushState()
 
 	for {
 		select {
@@ -44,7 +48,13 @@ func (w *EventWriter) Write(ctx context.Context, events <-chan *replication.Binl
 			if !ok {
 				return nil
 			}
-			if err := w.applyEvent(ctx, e); err != nil {
+			if e == nil || e.Event == nil {
+				continue
+			}
+			if err := w.applyEvent(ctx, e.Event); err != nil {
+				return err
+			}
+			if err := w.recordState(ctx, e); err != nil {
 				return err
 			}
 		}
@@ -238,6 +248,29 @@ func (w *EventWriter) exec(ctx context.Context, query string, args ...interface{
 		return fmt.Errorf("execute query: %w", err)
 	}
 	return nil
+}
+
+func (w *EventWriter) recordState(ctx context.Context, e *StreamEvent) error {
+	if w.recorder == nil || e == nil {
+		return nil
+	}
+	upd := state.Update{
+		BinlogFile: e.Position.Name,
+		BinlogPos:  uint64(e.Position.Pos),
+		GTIDSet:    e.GTIDSet,
+	}
+	return w.recorder.Record(ctx, upd)
+}
+
+func (w *EventWriter) flushState() {
+	if w.recorder == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := w.recorder.Flush(ctx); err != nil {
+		w.lg.Error("flush state failed", slog.String("err", err.Error()))
+	}
 }
 
 func pickColumns(columns []string, row []interface{}, skipped []int) ([]string, []interface{}, error) {

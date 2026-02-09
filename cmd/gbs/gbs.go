@@ -41,7 +41,7 @@ func main() {
 	}()
 
 	server := NewServer(lg, &cfg.Server)
-	w := worker.NewWorker(lg, cfg.Source, cfg.Destination)
+	w := worker.NewWorker(lg, cfg.Source, cfg.Destination, cfg.State)
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
