@@ -24,6 +24,10 @@ func NewWorker(lg *slog.Logger, source context2.SourceConfig, dest context2.Dest
 
 func (w *Worker) Run(ctx context.Context) error {
 	w.lg.Info("worker started")
+	if err := w.precheckSource(ctx); err != nil {
+		return err
+	}
+
 	reader := NewBinlogReader(w.lg, w.source)
 	events, err := reader.Read(ctx)
 	if err != nil {
