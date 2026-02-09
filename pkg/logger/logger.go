@@ -4,6 +4,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 )
 
 // LogConfig represents logging configuration
@@ -48,7 +49,21 @@ func NewLogger(c LogConfig) *slog.Logger {
 	}
 
 	opts := &slog.HandlerOptions{
-		Level: parseLogLevel(c.Level),
+		Level:     parseLogLevel(c.Level),
+		AddSource: true,
+		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+			if a.Key != slog.SourceKey {
+				return a
+			}
+			src, ok := a.Value.Any().(*slog.Source)
+			if !ok || src == nil {
+				return a
+			}
+			short := *src
+			short.File = filepath.Base(short.File)
+			a.Value = slog.AnyValue(&short)
+			return a
+		},
 	}
 
 	var handler slog.Handler
