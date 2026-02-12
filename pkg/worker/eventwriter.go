@@ -12,7 +12,6 @@ import (
 	"github.com/bobbyz3g/go-binlog-sync/pkg/sql"
 	"github.com/bobbyz3g/go-binlog-sync/pkg/state"
 	"github.com/go-mysql-org/go-mysql/client"
-	"github.com/go-mysql-org/go-mysql/mysql"
 	"github.com/go-mysql-org/go-mysql/replication"
 )
 
@@ -122,16 +121,16 @@ func (w *EventWriter) applyRowsEvent(ctx context.Context, ev *replication.RowsEv
 	if err != nil {
 		return err
 	}
-	qualifiedTable := quoteTable(schema, table)
+	qualifiedTable := sql.QuoteTable(schema, table)
 
 	switch ev.Type() {
 	case replication.EnumRowsEventTypeInsert:
 		for i, row := range ev.Rows {
-			cols, vals, err := pickColumns(columns, row, skipColumns(ev, i))
+			cols, vals, err := sql.PickColumns(columns, row, sql.SkipColumns(ev, i))
 			if err != nil {
 				return err
 			}
-			stmt, args, err := buildInsertStatement(qualifiedTable, cols, vals)
+			stmt, args, err := sql.BuildInsertStatement(qualifiedTable, cols, vals)
 			if err != nil {
 				return err
 			}
@@ -141,11 +140,11 @@ func (w *EventWriter) applyRowsEvent(ctx context.Context, ev *replication.RowsEv
 		}
 	case replication.EnumRowsEventTypeDelete:
 		for i, row := range ev.Rows {
-			cols, vals, err := pickColumns(columns, row, skipColumns(ev, i))
+			cols, vals, err := sql.PickColumns(columns, row, sql.SkipColumns(ev, i))
 			if err != nil {
 				return err
 			}
-			stmt, args, err := buildDeleteStatement(qualifiedTable, cols, vals)
+			stmt, args, err := sql.BuildDeleteStatement(qualifiedTable, cols, vals)
 			if err != nil {
 				return err
 			}
@@ -160,15 +159,15 @@ func (w *EventWriter) applyRowsEvent(ctx context.Context, ev *replication.RowsEv
 		for i := 0; i+1 < len(ev.Rows); i += 2 {
 			before := ev.Rows[i]
 			after := ev.Rows[i+1]
-			beforeCols, beforeVals, err := pickColumns(columns, before, skipColumns(ev, i))
+			beforeCols, beforeVals, err := sql.PickColumns(columns, before, sql.SkipColumns(ev, i))
 			if err != nil {
 				return err
 			}
-			afterCols, afterVals, err := pickColumns(columns, after, skipColumns(ev, i+1))
+			afterCols, afterVals, err := sql.PickColumns(columns, after, sql.SkipColumns(ev, i+1))
 			if err != nil {
 				return err
 			}
-			stmt, args, err := buildUpdateStatement(qualifiedTable, afterCols, afterVals, beforeCols, beforeVals)
+			stmt, args, err := sql.BuildUpdateStatement(qualifiedTable, afterCols, afterVals, beforeCols, beforeVals)
 			if err != nil {
 				return err
 			}
@@ -238,7 +237,7 @@ func (w *EventWriter) columnsForTable(schema, table string, columnCount int, tab
 
 func (w *EventWriter) exec(ctx context.Context, query string, args ...interface{}) error {
 	if ctx.Err() != nil {
-		return nil
+		return ctx.Err()
 	}
 	result, err := w.conn.Execute(query, args...)
 	if result != nil {
@@ -271,150 +270,4 @@ func (w *EventWriter) flushState() {
 	if err := w.recorder.Flush(ctx); err != nil {
 		w.lg.Error("flush state failed", slog.String("err", err.Error()))
 	}
-}
-
-func pickColumns(columns []string, row []interface{}, skipped []int) ([]string, []interface{}, error) {
-	if len(columns) != len(row) {
-		return nil, nil, fmt.Errorf("column/value mismatch: %d columns vs %d values", len(columns), len(row))
-	}
-	skipSet := make(map[int]struct{}, len(skipped))
-	for _, idx := range skipped {
-		skipSet[idx] = struct{}{}
-	}
-	selectedCols := make([]string, 0, len(columns)-len(skipSet))
-	selectedVals := make([]interface{}, 0, len(columns)-len(skipSet))
-	for i, col := range columns {
-		if _, ok := skipSet[i]; ok {
-			continue
-		}
-		selectedCols = append(selectedCols, col)
-		selectedVals = append(selectedVals, row[i])
-	}
-	return selectedCols, selectedVals, nil
-}
-
-func skipColumns(ev *replication.RowsEvent, rowIndex int) []int {
-	if rowIndex >= 0 && rowIndex < len(ev.SkippedColumns) {
-		return ev.SkippedColumns[rowIndex]
-	}
-	return nil
-}
-
-func buildInsertStatement(table string, columns []string, values []interface{}) (string, []interface{}, error) {
-	if len(columns) == 0 {
-		return "", nil, errors.New("insert with zero columns")
-	}
-	normValues, err := normalizeValues(values)
-	if err != nil {
-		return "", nil, err
-	}
-	colNames := make([]string, len(columns))
-	placeholders := make([]string, len(columns))
-	for i, col := range columns {
-		colNames[i] = quoteIdentifier(col)
-		placeholders[i] = "?"
-	}
-	stmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, strings.Join(colNames, ","), strings.Join(placeholders, ","))
-	return stmt, normValues, nil
-}
-
-func buildDeleteStatement(table string, columns []string, values []interface{}) (string, []interface{}, error) {
-	if len(columns) == 0 {
-		return "", nil, errors.New("delete with zero columns")
-	}
-	normValues, err := normalizeValues(values)
-	if err != nil {
-		return "", nil, err
-	}
-	whereClause, whereArgs, err := buildWhereClause(columns, normValues)
-	if err != nil {
-		return "", nil, err
-	}
-	stmt := fmt.Sprintf("DELETE FROM %s WHERE %s", table, whereClause)
-	return stmt, whereArgs, nil
-}
-
-func buildUpdateStatement(table string, setColumns []string, setValues []interface{}, whereColumns []string, whereValues []interface{}) (string, []interface{}, error) {
-	if len(setColumns) == 0 {
-		return "", nil, errors.New("update with zero set columns")
-	}
-	if len(whereColumns) == 0 {
-		return "", nil, errors.New("update with zero where columns")
-	}
-	normSet, err := normalizeValues(setValues)
-	if err != nil {
-		return "", nil, err
-	}
-	normWhere, err := normalizeValues(whereValues)
-	if err != nil {
-		return "", nil, err
-	}
-	setClause := buildSetClause(setColumns)
-	whereClause, whereArgs, err := buildWhereClause(whereColumns, normWhere)
-	if err != nil {
-		return "", nil, err
-	}
-	args := append(normSet, whereArgs...)
-	stmt := fmt.Sprintf("UPDATE %s SET %s WHERE %s", table, setClause, whereClause)
-	return stmt, args, nil
-}
-
-func buildSetClause(columns []string) string {
-	parts := make([]string, len(columns))
-	for i, col := range columns {
-		parts[i] = fmt.Sprintf("%s = ?", quoteIdentifier(col))
-	}
-	return strings.Join(parts, ", ")
-}
-
-func buildWhereClause(columns []string, values []interface{}) (string, []interface{}, error) {
-	if len(columns) != len(values) {
-		return "", nil, fmt.Errorf("where column/value mismatch: %d vs %d", len(columns), len(values))
-	}
-	parts := make([]string, 0, len(columns))
-	args := make([]interface{}, 0, len(columns))
-	for i, col := range columns {
-		if values[i] == nil {
-			parts = append(parts, fmt.Sprintf("%s IS NULL", quoteIdentifier(col)))
-			continue
-		}
-		parts = append(parts, fmt.Sprintf("%s = ?", quoteIdentifier(col)))
-		args = append(args, values[i])
-	}
-	return strings.Join(parts, " AND "), args, nil
-}
-
-func normalizeValues(values []interface{}) ([]interface{}, error) {
-	norm := make([]interface{}, len(values))
-	for i, v := range values {
-		if v == nil {
-			norm[i] = nil
-			continue
-		}
-		nv, err := normalizeValue(v)
-		if err != nil {
-			return nil, err
-		}
-		norm[i] = nv
-	}
-	return norm, nil
-}
-
-func normalizeValue(v interface{}) (interface{}, error) {
-	switch val := v.(type) {
-	case time.Time:
-		return val.Format(mysql.TimeFormat), nil
-	case *replication.JsonDiff:
-		return nil, fmt.Errorf("json diff update unsupported: %s", val.String())
-	default:
-		return v, nil
-	}
-}
-
-func quoteTable(schema, table string) string {
-	return quoteIdentifier(schema) + "." + quoteIdentifier(table)
-}
-
-func quoteIdentifier(value string) string {
-	return "`" + strings.ReplaceAll(value, "`", "``") + "`"
 }

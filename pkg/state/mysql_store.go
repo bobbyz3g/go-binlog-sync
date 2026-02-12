@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bobbyz3g/go-binlog-sync/pkg/sql"
 	"github.com/go-mysql-org/go-mysql/client"
 	"github.com/go-mysql-org/go-mysql/mysql"
 )
@@ -224,39 +225,12 @@ func qualifiedTable(db, table string) (string, error) {
 		if len(parts) != 2 {
 			return "", fmt.Errorf("invalid table name %q", table)
 		}
-		left, err := quoteIdent(parts[0])
-		if err != nil {
-			return "", err
-		}
-		right, err := quoteIdent(parts[1])
-		if err != nil {
-			return "", err
-		}
-		return left + "." + right, nil
+		return sql.QuoteIdentifier(parts[0]) + "." + sql.QuoteIdentifier(parts[1]), nil
 	}
 	if strings.TrimSpace(db) != "" {
-		left, err := quoteIdent(db)
-		if err != nil {
-			return "", err
-		}
-		right, err := quoteIdent(table)
-		if err != nil {
-			return "", err
-		}
-		return left + "." + right, nil
+		return sql.QuoteIdentifier(db) + "." + sql.QuoteIdentifier(table), nil
 	}
-	return quoteIdent(table)
-}
-
-func quoteIdent(name string) (string, error) {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return "", errors.New("mysql identifier is empty")
-	}
-	if strings.ContainsAny(name, "` ") {
-		return "", fmt.Errorf("invalid mysql identifier %q", name)
-	}
-	return "`" + name + "`", nil
+	return sql.QuoteIdentifier(table), nil
 }
 
 func readString(rs *mysql.Resultset, row, col int) (string, error) {
