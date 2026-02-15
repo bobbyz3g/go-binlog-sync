@@ -1,6 +1,6 @@
 module github.com/bobbyz3g/go-binlog-sync
 
-go 1.25
+go 1.26
 
 require (
 	github.com/go-mysql-org/go-mysql v1.12.0
