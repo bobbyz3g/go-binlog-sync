@@ -9,6 +9,7 @@ import (
 	"time"
 
 	pkgctx "github.com/bobbyz3g/go-binlog-sync/pkg/context"
+	"github.com/bobbyz3g/go-binlog-sync/pkg/filter"
 	"github.com/bobbyz3g/go-binlog-sync/pkg/sql"
 	"github.com/bobbyz3g/go-binlog-sync/pkg/state"
 	"github.com/go-mysql-org/go-mysql/client"
@@ -21,14 +22,16 @@ type EventWriter struct {
 	conn        *client.Conn
 	columnCache map[string][]string
 	recorder    *state.Recorder
+	filter      *filter.TableFilter
 }
 
-func NewEventWriter(lg *slog.Logger, cfg pkgctx.DestinationConfig, recorder *state.Recorder) *EventWriter {
+func NewEventWriter(lg *slog.Logger, cfg pkgctx.DestinationConfig, recorder *state.Recorder, filter *filter.TableFilter) *EventWriter {
 	return &EventWriter{
 		lg:          lg,
 		cfg:         cfg,
 		columnCache: make(map[string][]string),
 		recorder:    recorder,
+		filter:      filter,
 	}
 }
 
@@ -100,6 +103,11 @@ func (w *EventWriter) applyQueryEvent(ctx context.Context, ev *replication.Query
 	case "begin", "commit", "rollback":
 		return nil
 	}
+	schema := string(ev.Schema)
+	if !w.allowQueryEvent(schema, query) {
+		w.lg.Debug("skip query event by filter", slog.String("schema", schema), slog.String("query", query))
+		return nil
+	}
 	if len(ev.Schema) > 0 && !sql.IsCreateDatabase(ev.Query) {
 		if err := w.conn.UseDB(string(ev.Schema)); err != nil {
 			return fmt.Errorf("use schema %s(%s): %w", string(ev.Schema), ev.Query, err)
@@ -116,6 +124,10 @@ func (w *EventWriter) applyRowsEvent(ctx context.Context, ev *replication.RowsEv
 	table := string(ev.Table.Table)
 	if schema == "" || table == "" {
 		return fmt.Errorf("rows event missing schema/table (schema=%q table=%q)", schema, table)
+	}
+	if w.filter != nil && !w.filter.Allow(schema, table) {
+		w.lg.Debug("skip rows event by filter", slog.String("schema", schema), slog.String("table", table))
+		return nil
 	}
 	columns, err := w.columnsForTable(schema, table, int(ev.ColumnCount), ev.Table)
 	if err != nil {
@@ -180,6 +192,30 @@ func (w *EventWriter) applyRowsEvent(ctx context.Context, ev *replication.RowsEv
 	}
 
 	return nil
+}
+
+func (w *EventWriter) allowQueryEvent(schema, query string) bool {
+	if w.filter == nil {
+		return true
+	}
+	if schema != "" && !w.filter.Allow(schema, "") {
+		return false
+	}
+	if dbName, ok := sql.ExtractDDLDatabase(query); ok {
+		if !w.filter.Allow(dbName, "") {
+			return false
+		}
+	}
+	for _, table := range sql.ExtractDDLTables(query) {
+		targetSchema := table.Schema
+		if targetSchema == "" {
+			targetSchema = schema
+		}
+		if !w.filter.Allow(targetSchema, table.Table) {
+			return false
+		}
+	}
+	return true
 }
 
 func (w *EventWriter) columnsForTable(schema, table string, columnCount int, tableMap *replication.TableMapEvent) ([]string, error) {

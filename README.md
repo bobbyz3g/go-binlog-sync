@@ -63,6 +63,14 @@ destination:
   user: root
   password: ""
 
+filter:
+  whitelist:
+    databases: []         # database names
+    tables: []            # table names or db.table
+  blacklist:
+    databases: []
+    tables: []
+
 state:
   enabled: false
   type: file              # file or mysql
@@ -77,6 +85,13 @@ state:
     table: gbs_sync_state
     sourceID: ""
 ```
+
+Filter notes:
+
+- If both whitelist and blacklist are empty, all databases/tables are synced.
+- Blacklist entries always win over whitelist entries.
+- Table entries accept `db.table` or `table` (matches any database).
+- DDL filtering is best-effort for common database/table statements; row events always obey the filter.
 
 ## Usage
 

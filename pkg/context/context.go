@@ -67,6 +67,18 @@ type DestinationConfig struct {
 	Password string `json:"password" yaml:"password"`
 }
 
+// FilterList defines table/database filters for sync.
+type FilterList struct {
+	Databases []string `json:"databases" yaml:"databases"`
+	Tables    []string `json:"tables" yaml:"tables"`
+}
+
+// FilterConfig defines whitelist/blacklist settings for sync.
+type FilterConfig struct {
+	Whitelist FilterList `json:"whitelist" yaml:"whitelist"`
+	Blacklist FilterList `json:"blacklist" yaml:"blacklist"`
+}
+
 // StateMySQLConfig defines MySQL table storage for sync state.
 type StateMySQLConfig struct {
 	Host     string `json:"host" yaml:"host"`
@@ -101,6 +113,8 @@ type Config struct {
 	Source SourceConfig `json:"source" yaml:"source"`
 	// Destination contains destination database connection configuration
 	Destination DestinationConfig `json:"destination" yaml:"destination"`
+	// Filter contains table/database filtering configuration.
+	Filter FilterConfig `json:"filter" yaml:"filter"`
 	// State contains sync state persistence configuration
 	State StateConfig `json:"state" yaml:"state"`
 }

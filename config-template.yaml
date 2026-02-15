@@ -22,6 +22,14 @@ destination:
   user: root
   password: ""
 
+filter:
+  whitelist:
+    databases: []
+    tables: []
+  blacklist:
+    databases: []
+    tables: []
+
 state:
   enabled: false
   type: file # file/mysql
