@@ -1,0 +1,71 @@
+version: "3.9"
+
+services:
+  mysql-source:
+    image: mysql:8.0
+    container_name: gbs-mysql-source
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: gbs_test
+    ports:
+      - "3307:3306"
+    command:
+      - "--server-id=101"
+      - "--log-bin=mysql-bin"
+      - "--binlog-format=ROW"
+      - "--binlog-row-image=FULL"
+      - "--gtid-mode=ON"
+      - "--enforce-gtid-consistency=ON"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mysql-dest:
+    image: mysql:8.0
+    container_name: gbs-mysql-dest
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3308:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mysql-state:
+    image: mysql:8.0
+    container_name: gbs-mysql-state
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: gbs_state
+    ports:
+      - "3309:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mariadb-source:
+    image: mariadb:11
+    container_name: gbs-mariadb-source
+    profiles: ["mariadb"]
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: gbs_test
+    ports:
+      - "3310:3306"
+    command:
+      - "--server-id=201"
+      - "--log-bin=mysql-bin"
+      - "--binlog-format=ROW"
+      - "--binlog-row-image=FULL"
+      - "--gtid-strict-mode=ON"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20

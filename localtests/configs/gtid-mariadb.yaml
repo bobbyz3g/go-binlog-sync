@@ -1,0 +1,46 @@
+log:
+  level: info
+
+server:
+  host: 127.0.0.1
+  port: 8081
+
+source:
+  flavor: mariadb
+  serverID: 32
+  host: 127.0.0.1
+  port: 3310
+  user: root
+  password: root
+  gtidEnabled: true
+  gtidSet: ""
+  binlog: ""
+  position: 0
+
+destination:
+  host: 127.0.0.1
+  port: 3308
+  user: root
+  password: root
+
+filter:
+  whitelist:
+    databases: []
+    tables: []
+  blacklist:
+    databases: []
+    tables: []
+
+state:
+  enabled: false
+  type: file
+  everyEvents: 100
+  filePath: gbs.state.json
+  mysql:
+    host: 127.0.0.1
+    port: 3309
+    user: root
+    password: root
+    database: gbs_state
+    table: gbs_sync_state
+    sourceID: ""
