@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -59,9 +60,7 @@ func NewLogger(c LogConfig) *slog.Logger {
 			if !ok || src == nil {
 				return a
 			}
-			short := *src
-			short.File = filepath.Base(short.File)
-			a.Value = slog.AnyValue(&short)
+			a.Value = slog.StringValue(fmt.Sprintf("%s:%d", filepath.Base(src.File), src.Line))
 			return a
 		},
 	}
