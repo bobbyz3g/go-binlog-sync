@@ -36,7 +36,7 @@ func (w *Worker) initStateRecorder(ctx context.Context) (*state.Recorder, error)
 			w.lg.Warn("ignore invalid state", slog.String("err", err.Error()))
 			saved = nil
 		} else {
-			w.lg.Info("state loaded", slog.String("mode", string(saved.Mode)))
+			w.logStateResume(saved)
 		}
 	}
 
@@ -108,6 +108,21 @@ func (w *Worker) applySavedState(saved *state.State) error {
 		return fmt.Errorf("invalid state mode %q", saved.Mode)
 	}
 	return nil
+}
+
+func (w *Worker) logStateResume(saved *state.State) {
+	if saved == nil {
+		return
+	}
+	mode := state.Mode(strings.ToLower(string(saved.Mode)))
+	switch mode {
+	case state.ModeGTID:
+		w.lg.Info("resume from saved state", slog.String("mode", string(mode)), slog.String("gtid_set", saved.GTIDSet))
+	case state.ModePos:
+		w.lg.Info("resume from saved state", slog.String("mode", string(mode)), slog.String("binlog_file", saved.BinlogFile), slog.Uint64("binlog_pos", saved.BinlogPos))
+	default:
+		w.lg.Info("resume from saved state", slog.String("mode", string(saved.Mode)))
+	}
 }
 
 func (w *Worker) baseState(saved *state.State) *state.State {
