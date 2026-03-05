@@ -11,6 +11,7 @@ import (
 	"time"
 
 	context2 "github.com/bobbyz3g/go-binlog-sync/pkg/context"
+	"github.com/bobbyz3g/go-binlog-sync/pkg/metrics"
 )
 
 type Server struct {
@@ -59,5 +60,5 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 }
 
 func (s *Server) registerHandler(mux *http.ServeMux) {
-
+	mux.Handle("/metrics", metrics.Handler())
 }
