@@ -11,7 +11,7 @@ go-binlog-sync is a binlog sync tool. It reads binlog from source mysql and sync
 
 ## Technology Stack
 
-- Go: 1.25
+- Go: 1.26
 
 ## Core Rules
 
