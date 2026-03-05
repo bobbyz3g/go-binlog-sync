@@ -99,6 +99,43 @@ Filter notes:
 gbs -config config.yaml
 ```
 
+## Monitoring
+
+The HTTP server also exposes Prometheus metrics at:
+
+- `GET /metrics`
+- Full URL example: `http://127.0.0.1:8081/metrics` (based on `server.host` and `server.port`)
+
+Example Prometheus scrape config:
+
+```yaml
+scrape_configs:
+  - job_name: gbs
+    static_configs:
+      - targets: ["127.0.0.1:8081"]
+```
+
+Core metrics:
+
+- `gbs_worker_up`
+- `gbs_binlog_events_read_total{event_type}`
+- `gbs_binlog_read_errors_total`
+- `gbs_replication_lag_seconds`
+- `gbs_events_filtered_total{kind}`
+- `gbs_events_applied_total{event_type}`
+- `gbs_event_apply_errors_total{stage}`
+- `gbs_event_apply_duration_seconds{event_type}`
+- `gbs_state_checkpoint_total{result}`
+- `gbs_state_last_checkpoint_timestamp_seconds`
+
+Suggested initial alerts:
+
+- `gbs_worker_up == 0` for 1 minute
+- high increase rate on `gbs_binlog_read_errors_total`
+- high increase rate on `gbs_event_apply_errors_total`
+- `gbs_replication_lag_seconds` continuously above your SLO threshold
+- no increase in `gbs_state_checkpoint_total{result="success"}` for a long window
+
 ### Source MySQL setup
 
 Ensure the source MySQL instance has the required settings:
