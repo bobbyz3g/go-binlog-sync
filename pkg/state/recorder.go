@@ -3,6 +3,9 @@ package state
 import (
 	"context"
 	"errors"
+	"time"
+
+	"github.com/bobbyz3g/go-binlog-sync/pkg/metrics"
 )
 
 // Update describes a state update from a processed event.
@@ -78,8 +81,11 @@ func (r *Recorder) save(ctx context.Context) error {
 		return errors.New("state store is nil")
 	}
 	if err := r.store.Save(ctx, &r.st); err != nil {
+		metrics.IncStateCheckpoint("fail")
 		return err
 	}
+	metrics.IncStateCheckpoint("success")
+	metrics.SetStateLastCheckpointTimestamp(time.Now())
 	r.dirty = false
 	return nil
 }

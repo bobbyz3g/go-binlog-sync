@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	context2 "github.com/bobbyz3g/go-binlog-sync/pkg/context"
+	"github.com/bobbyz3g/go-binlog-sync/pkg/metrics"
 	"github.com/go-mysql-org/go-mysql/mysql"
 	"github.com/go-mysql-org/go-mysql/replication"
 )
@@ -80,8 +82,14 @@ func (b *BinlogReader) Read(ctx context.Context) (chan *StreamEvent, error) {
 			}
 			e, err := streamer.GetEvent(ctx)
 			if err != nil {
+				metrics.IncBinlogReadErrors()
 				b.lg.Error("get event failed", slog.String("err", err.Error()))
 				continue
+			}
+			metrics.IncBinlogEventsReadTotal(binlogEventTypeLabel(e))
+			if e != nil && e.Header != nil && e.Header.Timestamp > 0 {
+				lag := time.Since(time.Unix(int64(e.Header.Timestamp), 0)).Seconds()
+				metrics.SetReplicationLag(lag)
 			}
 			events <- &StreamEvent{
 				Event:    e,
@@ -109,4 +117,11 @@ func extractGTIDSet(e *replication.BinlogEvent) string {
 		}
 	}
 	return ""
+}
+
+func binlogEventTypeLabel(e *replication.BinlogEvent) string {
+	if e == nil || e.Header == nil {
+		return "unknown"
+	}
+	return strings.ToLower(e.Header.EventType.String())
 }

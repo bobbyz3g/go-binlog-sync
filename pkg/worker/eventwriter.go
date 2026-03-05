@@ -10,6 +10,7 @@ import (
 
 	pkgctx "github.com/bobbyz3g/go-binlog-sync/pkg/context"
 	"github.com/bobbyz3g/go-binlog-sync/pkg/filter"
+	"github.com/bobbyz3g/go-binlog-sync/pkg/metrics"
 	"github.com/bobbyz3g/go-binlog-sync/pkg/sql"
 	"github.com/bobbyz3g/go-binlog-sync/pkg/state"
 	"github.com/go-mysql-org/go-mysql/client"
@@ -86,9 +87,26 @@ func (w *EventWriter) connect(ctx context.Context) error {
 func (w *EventWriter) applyEvent(ctx context.Context, e *replication.BinlogEvent) error {
 	switch ev := e.Event.(type) {
 	case *replication.RowsEvent:
-		return w.applyRowsEvent(ctx, ev)
+		eventType := rowsEventTypeLabel(ev)
+		start := time.Now()
+		err := w.applyRowsEvent(ctx, ev)
+		metrics.ObserveEventApplyDuration(eventType, time.Since(start))
+		if err != nil {
+			metrics.IncEventApplyErrors("rows")
+			return err
+		}
+		metrics.IncEventsApplied(eventType)
+		return nil
 	case *replication.QueryEvent:
-		return w.applyQueryEvent(ctx, ev)
+		start := time.Now()
+		err := w.applyQueryEvent(ctx, ev)
+		metrics.ObserveEventApplyDuration("query", time.Since(start))
+		if err != nil {
+			metrics.IncEventApplyErrors("query")
+			return err
+		}
+		metrics.IncEventsApplied("query")
+		return nil
 	default:
 		return nil
 	}
@@ -105,6 +123,7 @@ func (w *EventWriter) applyQueryEvent(ctx context.Context, ev *replication.Query
 	}
 	schema := string(ev.Schema)
 	if !w.allowQueryEvent(schema, query) {
+		metrics.IncEventsFiltered("query")
 		w.lg.Debug("skip query event by filter", slog.String("schema", schema), slog.String("query", query))
 		return nil
 	}
@@ -126,6 +145,7 @@ func (w *EventWriter) applyRowsEvent(ctx context.Context, ev *replication.RowsEv
 		return fmt.Errorf("rows event missing schema/table (schema=%q table=%q)", schema, table)
 	}
 	if w.filter != nil && !w.filter.Allow(schema, table) {
+		metrics.IncEventsFiltered("rows")
 		w.lg.Debug("skip rows event by filter", slog.String("schema", schema), slog.String("table", table))
 		return nil
 	}
@@ -280,6 +300,7 @@ func (w *EventWriter) exec(ctx context.Context, query string, args ...any) error
 		result.Close()
 	}
 	if err != nil {
+		metrics.IncEventApplyErrors("exec")
 		return fmt.Errorf("execute query: %w", err)
 	}
 	return nil
@@ -294,7 +315,11 @@ func (w *EventWriter) recordState(ctx context.Context, e *StreamEvent) error {
 		BinlogPos:  uint64(e.Position.Pos),
 		GTIDSet:    e.GTIDSet,
 	}
-	return w.recorder.Record(ctx, upd)
+	if err := w.recorder.Record(ctx, upd); err != nil {
+		metrics.IncEventApplyErrors("state")
+		return err
+	}
+	return nil
 }
 
 func (w *EventWriter) flushState() {
@@ -305,5 +330,21 @@ func (w *EventWriter) flushState() {
 	defer cancel()
 	if err := w.recorder.Flush(ctx); err != nil {
 		w.lg.Error("flush state failed", slog.String("err", err.Error()))
+	}
+}
+
+func rowsEventTypeLabel(ev *replication.RowsEvent) string {
+	if ev == nil {
+		return "rows_unknown"
+	}
+	switch ev.Type() {
+	case replication.EnumRowsEventTypeInsert:
+		return "rows_insert"
+	case replication.EnumRowsEventTypeDelete:
+		return "rows_delete"
+	case replication.EnumRowsEventTypeUpdate:
+		return "rows_update"
+	default:
+		return "rows_unknown"
 	}
 }

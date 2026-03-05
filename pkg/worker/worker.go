@@ -7,6 +7,7 @@ import (
 
 	context2 "github.com/bobbyz3g/go-binlog-sync/pkg/context"
 	"github.com/bobbyz3g/go-binlog-sync/pkg/filter"
+	"github.com/bobbyz3g/go-binlog-sync/pkg/metrics"
 )
 
 type Worker struct {
@@ -29,6 +30,9 @@ func NewWorker(lg *slog.Logger, source context2.SourceConfig, dest context2.Dest
 
 func (w *Worker) Run(ctx context.Context) error {
 	w.lg.Info("worker started")
+	metrics.SetWorkerUp(true)
+	defer metrics.SetWorkerUp(false)
+
 	recorder, err := w.initStateRecorder(ctx)
 	if err != nil {
 		return err
