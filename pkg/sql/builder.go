@@ -11,7 +11,7 @@ import (
 )
 
 // BuildInsertStatement constructs an INSERT statement for the given table and columns.
-func BuildInsertStatement(table string, columns []string, values []interface{}) (string, []interface{}, error) {
+func BuildInsertStatement(table string, columns []string, values []any) (string, []any, error) {
 	if len(columns) == 0 {
 		return "", nil, errors.New("insert with zero columns")
 	}
@@ -30,7 +30,7 @@ func BuildInsertStatement(table string, columns []string, values []interface{}) 
 }
 
 // BuildDeleteStatement constructs a DELETE statement with a WHERE clause.
-func BuildDeleteStatement(table string, columns []string, values []interface{}) (string, []interface{}, error) {
+func BuildDeleteStatement(table string, columns []string, values []any) (string, []any, error) {
 	if len(columns) == 0 {
 		return "", nil, errors.New("delete with zero columns")
 	}
@@ -47,7 +47,7 @@ func BuildDeleteStatement(table string, columns []string, values []interface{}) 
 }
 
 // BuildUpdateStatement constructs an UPDATE statement with SET and WHERE clauses.
-func BuildUpdateStatement(table string, setColumns []string, setValues []interface{}, whereColumns []string, whereValues []interface{}) (string, []interface{}, error) {
+func BuildUpdateStatement(table string, setColumns []string, setValues []any, whereColumns []string, whereValues []any) (string, []any, error) {
 	if len(setColumns) == 0 {
 		return "", nil, errors.New("update with zero set columns")
 	}
@@ -82,12 +82,12 @@ func BuildSetClause(columns []string) string {
 }
 
 // BuildWhereClause constructs a WHERE clause handling NULL values correctly.
-func BuildWhereClause(columns []string, values []interface{}) (string, []interface{}, error) {
+func BuildWhereClause(columns []string, values []any) (string, []any, error) {
 	if len(columns) != len(values) {
 		return "", nil, fmt.Errorf("where column/value mismatch: %d vs %d", len(columns), len(values))
 	}
 	parts := make([]string, 0, len(columns))
-	args := make([]interface{}, 0, len(columns))
+	args := make([]any, 0, len(columns))
 	for i, col := range columns {
 		if values[i] == nil {
 			parts = append(parts, fmt.Sprintf("%s IS NULL", QuoteIdentifier(col)))
@@ -100,8 +100,8 @@ func BuildWhereClause(columns []string, values []interface{}) (string, []interfa
 }
 
 // NormalizeValues normalizes all values in a slice.
-func NormalizeValues(values []interface{}) ([]interface{}, error) {
-	norm := make([]interface{}, len(values))
+func NormalizeValues(values []any) ([]any, error) {
+	norm := make([]any, len(values))
 	for i, v := range values {
 		if v == nil {
 			norm[i] = nil
@@ -117,7 +117,7 @@ func NormalizeValues(values []interface{}) ([]interface{}, error) {
 }
 
 // NormalizeValue converts special types to database-compatible representations.
-func NormalizeValue(v interface{}) (interface{}, error) {
+func NormalizeValue(v any) (any, error) {
 	switch val := v.(type) {
 	case time.Time:
 		return val.Format(mysql.TimeFormat), nil
@@ -139,7 +139,7 @@ func QuoteIdentifier(value string) string {
 }
 
 // PickColumns filters columns and values based on skipped column indices.
-func PickColumns(columns []string, row []interface{}, skipped []int) ([]string, []interface{}, error) {
+func PickColumns(columns []string, row []any, skipped []int) ([]string, []any, error) {
 	if len(columns) != len(row) {
 		return nil, nil, fmt.Errorf("column/value mismatch: %d columns vs %d values", len(columns), len(row))
 	}
@@ -148,7 +148,7 @@ func PickColumns(columns []string, row []interface{}, skipped []int) ([]string, 
 		skipSet[idx] = struct{}{}
 	}
 	selectedCols := make([]string, 0, len(columns)-len(skipSet))
-	selectedVals := make([]interface{}, 0, len(columns)-len(skipSet))
+	selectedVals := make([]any, 0, len(columns)-len(skipSet))
 	for i, col := range columns {
 		if _, ok := skipSet[i]; ok {
 			continue

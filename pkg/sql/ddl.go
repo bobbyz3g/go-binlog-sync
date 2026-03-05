@@ -246,8 +246,8 @@ func parseTableList(tokens []string, idx int) []TableName {
 		if isToken(tokens, i, "RESTRICT") || isToken(tokens, i, "CASCADE") {
 			break
 		}
-		parts := strings.Split(tokens[i], ",")
-		for _, part := range parts {
+		parts := strings.SplitSeq(tokens[i], ",")
+		for part := range parts {
 			name := parseTableName(part)
 			if name.Table != "" {
 				names = append(names, name)

@@ -54,7 +54,7 @@ func TestBuildInsertStatement(t *testing.T) {
 		name    string
 		table   string
 		columns []string
-		values  []interface{}
+		values  []any
 		wantSQL string
 		wantErr bool
 	}{
@@ -62,7 +62,7 @@ func TestBuildInsertStatement(t *testing.T) {
 			name:    "simple insert",
 			table:   "`db`.`table`",
 			columns: []string{"id", "name"},
-			values:  []interface{}{1, "alice"},
+			values:  []any{1, "alice"},
 			wantSQL: "INSERT INTO `db`.`table` (`id`,`name`) VALUES (?,?)",
 			wantErr: false,
 		},
@@ -70,7 +70,7 @@ func TestBuildInsertStatement(t *testing.T) {
 			name:    "zero columns",
 			table:   "`db`.`table`",
 			columns: []string{},
-			values:  []interface{}{},
+			values:  []any{},
 			wantSQL: "",
 			wantErr: true,
 		},
@@ -78,7 +78,7 @@ func TestBuildInsertStatement(t *testing.T) {
 			name:    "with null",
 			table:   "`db`.`table`",
 			columns: []string{"id", "data"},
-			values:  []interface{}{1, nil},
+			values:  []any{1, nil},
 			wantSQL: "INSERT INTO `db`.`table` (`id`,`data`) VALUES (?,?)",
 			wantErr: false,
 		},
@@ -107,7 +107,7 @@ func TestBuildDeleteStatement(t *testing.T) {
 		name    string
 		table   string
 		columns []string
-		values  []interface{}
+		values  []any
 		wantSQL string
 		wantErr bool
 	}{
@@ -115,7 +115,7 @@ func TestBuildDeleteStatement(t *testing.T) {
 			name:    "simple delete",
 			table:   "`db`.`table`",
 			columns: []string{"id"},
-			values:  []interface{}{1},
+			values:  []any{1},
 			wantSQL: "DELETE FROM `db`.`table` WHERE `id` = ?",
 			wantErr: false,
 		},
@@ -123,7 +123,7 @@ func TestBuildDeleteStatement(t *testing.T) {
 			name:    "delete with null",
 			table:   "`db`.`table`",
 			columns: []string{"id", "data"},
-			values:  []interface{}{1, nil},
+			values:  []any{1, nil},
 			wantSQL: "DELETE FROM `db`.`table` WHERE `id` = ? AND `data` IS NULL",
 			wantErr: false,
 		},
@@ -131,7 +131,7 @@ func TestBuildDeleteStatement(t *testing.T) {
 			name:    "zero columns",
 			table:   "`db`.`table`",
 			columns: []string{},
-			values:  []interface{}{},
+			values:  []any{},
 			wantSQL: "",
 			wantErr: true,
 		},
@@ -155,9 +155,9 @@ func TestBuildUpdateStatement(t *testing.T) {
 		name         string
 		table        string
 		setColumns   []string
-		setValues    []interface{}
+		setValues    []any
 		whereColumns []string
-		whereValues  []interface{}
+		whereValues  []any
 		wantSQL      string
 		wantErr      bool
 	}{
@@ -165,9 +165,9 @@ func TestBuildUpdateStatement(t *testing.T) {
 			name:         "simple update",
 			table:        "`db`.`table`",
 			setColumns:   []string{"name"},
-			setValues:    []interface{}{"bob"},
+			setValues:    []any{"bob"},
 			whereColumns: []string{"id"},
-			whereValues:  []interface{}{1},
+			whereValues:  []any{1},
 			wantSQL:      "UPDATE `db`.`table` SET `name` = ? WHERE `id` = ?",
 			wantErr:      false,
 		},
@@ -175,9 +175,9 @@ func TestBuildUpdateStatement(t *testing.T) {
 			name:         "update multiple columns",
 			table:        "`db`.`table`",
 			setColumns:   []string{"name", "age"},
-			setValues:    []interface{}{"bob", 30},
+			setValues:    []any{"bob", 30},
 			whereColumns: []string{"id"},
-			whereValues:  []interface{}{1},
+			whereValues:  []any{1},
 			wantSQL:      "UPDATE `db`.`table` SET `name` = ?, `age` = ? WHERE `id` = ?",
 			wantErr:      false,
 		},
@@ -185,9 +185,9 @@ func TestBuildUpdateStatement(t *testing.T) {
 			name:         "zero set columns",
 			table:        "`db`.`table`",
 			setColumns:   []string{},
-			setValues:    []interface{}{},
+			setValues:    []any{},
 			whereColumns: []string{"id"},
-			whereValues:  []interface{}{1},
+			whereValues:  []any{1},
 			wantSQL:      "",
 			wantErr:      true,
 		},
@@ -195,9 +195,9 @@ func TestBuildUpdateStatement(t *testing.T) {
 			name:         "zero where columns",
 			table:        "`db`.`table`",
 			setColumns:   []string{"name"},
-			setValues:    []interface{}{"bob"},
+			setValues:    []any{"bob"},
 			whereColumns: []string{},
-			whereValues:  []interface{}{},
+			whereValues:  []any{},
 			wantSQL:      "",
 			wantErr:      true,
 		},
@@ -218,44 +218,44 @@ func TestBuildUpdateStatement(t *testing.T) {
 
 func TestBuildWhereClause(t *testing.T) {
 	tests := []struct {
-		name        string
-		columns     []string
-		values      []interface{}
-		wantClause  string
-		wantArgLen  int
-		wantErr     bool
+		name       string
+		columns    []string
+		values     []any
+		wantClause string
+		wantArgLen int
+		wantErr    bool
 	}{
 		{
-			name:        "simple where",
-			columns:     []string{"id"},
-			values:      []interface{}{1},
-			wantClause:  "`id` = ?",
-			wantArgLen:  1,
-			wantErr:     false,
+			name:       "simple where",
+			columns:    []string{"id"},
+			values:     []any{1},
+			wantClause: "`id` = ?",
+			wantArgLen: 1,
+			wantErr:    false,
 		},
 		{
-			name:        "multiple conditions",
-			columns:     []string{"id", "name"},
-			values:      []interface{}{1, "alice"},
-			wantClause:  "`id` = ? AND `name` = ?",
-			wantArgLen:  2,
-			wantErr:     false,
+			name:       "multiple conditions",
+			columns:    []string{"id", "name"},
+			values:     []any{1, "alice"},
+			wantClause: "`id` = ? AND `name` = ?",
+			wantArgLen: 2,
+			wantErr:    false,
 		},
 		{
-			name:        "with null",
-			columns:     []string{"id", "data"},
-			values:      []interface{}{1, nil},
-			wantClause:  "`id` = ? AND `data` IS NULL",
-			wantArgLen:  1,
-			wantErr:     false,
+			name:       "with null",
+			columns:    []string{"id", "data"},
+			values:     []any{1, nil},
+			wantClause: "`id` = ? AND `data` IS NULL",
+			wantArgLen: 1,
+			wantErr:    false,
 		},
 		{
-			name:        "column/value mismatch",
-			columns:     []string{"id", "name"},
-			values:      []interface{}{1},
-			wantClause:  "",
-			wantArgLen:  0,
-			wantErr:     true,
+			name:       "column/value mismatch",
+			columns:    []string{"id", "name"},
+			values:     []any{1},
+			wantClause: "",
+			wantArgLen: 0,
+			wantErr:    true,
 		},
 	}
 	for _, tt := range tests {
@@ -313,8 +313,8 @@ func TestNormalizeValue(t *testing.T) {
 	now := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 	tests := []struct {
 		name    string
-		input   interface{}
-		want    interface{}
+		input   any
+		want    any
 		wantErr bool
 	}{
 		{
@@ -359,20 +359,20 @@ func TestNormalizeValue(t *testing.T) {
 func TestNormalizeValues(t *testing.T) {
 	tests := []struct {
 		name    string
-		input   []interface{}
-		want    []interface{}
+		input   []any
+		want    []any
 		wantErr bool
 	}{
 		{
 			name:    "mixed types",
-			input:   []interface{}{1, "test", nil},
-			want:    []interface{}{1, "test", nil},
+			input:   []any{1, "test", nil},
+			want:    []any{1, "test", nil},
 			wantErr: false,
 		},
 		{
 			name:    "empty",
-			input:   []interface{}{},
-			want:    []interface{}{},
+			input:   []any{},
+			want:    []any{},
 			wantErr: false,
 		},
 	}
@@ -392,45 +392,45 @@ func TestNormalizeValues(t *testing.T) {
 
 func TestPickColumns(t *testing.T) {
 	tests := []struct {
-		name        string
-		columns     []string
-		row         []interface{}
-		skipped     []int
-		wantCols    []string
-		wantVals    []interface{}
-		wantErr     bool
+		name     string
+		columns  []string
+		row      []any
+		skipped  []int
+		wantCols []string
+		wantVals []any
+		wantErr  bool
 	}{
 		{
 			name:     "no skipped",
 			columns:  []string{"id", "name", "age"},
-			row:      []interface{}{1, "alice", 30},
+			row:      []any{1, "alice", 30},
 			skipped:  []int{},
 			wantCols: []string{"id", "name", "age"},
-			wantVals: []interface{}{1, "alice", 30},
+			wantVals: []any{1, "alice", 30},
 			wantErr:  false,
 		},
 		{
 			name:     "skip middle column",
 			columns:  []string{"id", "name", "age"},
-			row:      []interface{}{1, "alice", 30},
+			row:      []any{1, "alice", 30},
 			skipped:  []int{1},
 			wantCols: []string{"id", "age"},
-			wantVals: []interface{}{1, 30},
+			wantVals: []any{1, 30},
 			wantErr:  false,
 		},
 		{
 			name:     "skip multiple",
 			columns:  []string{"id", "name", "age", "email"},
-			row:      []interface{}{1, "alice", 30, "a@b.com"},
+			row:      []any{1, "alice", 30, "a@b.com"},
 			skipped:  []int{1, 3},
 			wantCols: []string{"id", "age"},
-			wantVals: []interface{}{1, 30},
+			wantVals: []any{1, 30},
 			wantErr:  false,
 		},
 		{
 			name:     "column/row mismatch",
 			columns:  []string{"id", "name"},
-			row:      []interface{}{1},
+			row:      []any{1},
 			skipped:  []int{},
 			wantCols: nil,
 			wantVals: nil,

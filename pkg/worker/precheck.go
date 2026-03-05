@@ -129,7 +129,7 @@ func readVariableMap(result *mysql.Result) (map[string]string, error) {
 	return vars, nil
 }
 
-func valueToString(v interface{}) (string, error) {
+func valueToString(v any) (string, error) {
 	switch t := v.(type) {
 	case string:
 		return t, nil

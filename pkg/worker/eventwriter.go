@@ -271,7 +271,7 @@ func (w *EventWriter) columnsForTable(schema, table string, columnCount int, tab
 	return cols, nil
 }
 
-func (w *EventWriter) exec(ctx context.Context, query string, args ...interface{}) error {
+func (w *EventWriter) exec(ctx context.Context, query string, args ...any) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
