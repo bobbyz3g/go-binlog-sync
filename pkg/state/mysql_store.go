@@ -174,6 +174,7 @@ func (s *MySQLStore) Save(ctx context.Context, st *State) error {
 	}
 
 	st.Touch(timeNowUTC())
+	updatedAt := mysqlTimestampValue(st.UpdatedAt)
 	query := fmt.Sprintf(`INSERT INTO %s
 		(source_id, flavor, mode, gtid_set, binlog_file, binlog_pos, server_id, updated_at, version)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -195,7 +196,7 @@ func (s *MySQLStore) Save(ctx context.Context, st *State) error {
 		st.BinlogFile,
 		st.BinlogPos,
 		st.ServerID,
-		st.UpdatedAt,
+		updatedAt,
 		st.Version,
 	)
 	if result != nil {
@@ -205,6 +206,13 @@ func (s *MySQLStore) Save(ctx context.Context, st *State) error {
 		return fmt.Errorf("save state: %w", err)
 	}
 	return nil
+}
+
+func mysqlTimestampValue(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.UTC().Format("2006-01-02 15:04:05")
 }
 
 func (s *MySQLStore) connect(ctx context.Context) (*client.Conn, error) {

@@ -42,26 +42,40 @@ func (w *EventWriter) Write(ctx context.Context, events <-chan *StreamEvent) err
 	}
 	defer w.conn.Close()
 	defer w.flushState()
+	stopShutdownLog := context.AfterFunc(ctx, func() {
+		w.lg.Info("shutdown requested, draining remaining events before exit")
+	})
+	defer stopShutdownLog()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case e, ok := <-events:
-			if !ok {
-				return nil
-			}
-			if e == nil || e.Event == nil {
-				continue
-			}
-			if err := w.applyEvent(ctx, e.Event); err != nil {
-				return err
-			}
-			if err := w.recordState(ctx, e); err != nil {
-				return err
-			}
+	err := drainEvents(ctx, events, func(processCtx context.Context, e *StreamEvent) error {
+		if err := w.applyEvent(processCtx, e.Event); err != nil {
+			return err
+		}
+		if err := w.recordState(processCtx, e); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if ctx.Err() != nil {
+		w.lg.LogAttrs(context.Background(), slog.LevelInfo, "event drain completed, ready to flush final state", w.checkpointAttrs()...)
+	}
+	return nil
+}
+
+func drainEvents(ctx context.Context, events <-chan *StreamEvent, handle func(context.Context, *StreamEvent) error) error {
+	processCtx := context.WithoutCancel(ctx)
+	for e := range events {
+		if e == nil || e.Event == nil {
+			continue
+		}
+		if err := handle(processCtx, e); err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
 func (w *EventWriter) connect(ctx context.Context) error {
@@ -326,11 +340,57 @@ func (w *EventWriter) flushState() {
 	if w.recorder == nil {
 		return
 	}
+	w.lg.LogAttrs(context.Background(), slog.LevelInfo, "flushing final state before exit", w.checkpointAttrs()...)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := w.recorder.Flush(ctx); err != nil {
 		w.lg.Error("flush state failed", slog.String("err", err.Error()))
+		return
 	}
+	w.lg.LogAttrs(context.Background(), slog.LevelInfo, "final state flushed", w.checkpointAttrs()...)
+}
+
+func (w *EventWriter) checkpointAttrs() []slog.Attr {
+	if w.recorder == nil {
+		return []slog.Attr{slog.Bool("state_enabled", false)}
+	}
+
+	st := w.recorder.State()
+	attrs := []slog.Attr{
+		slog.Bool("state_enabled", true),
+		slog.String("mode", string(st.Mode)),
+		slog.Uint64("version", st.Version),
+	}
+	if st.SourceID != "" {
+		attrs = append(attrs, slog.String("source_id", st.SourceID))
+	}
+	if !st.UpdatedAt.IsZero() {
+		attrs = append(attrs, slog.Time("updated_at", st.UpdatedAt))
+	}
+	switch st.Mode {
+	case state.ModeGTID:
+		if st.GTIDSet != "" {
+			attrs = append(attrs, slog.String("gtid_set", st.GTIDSet))
+		}
+	case state.ModePos:
+		if st.BinlogFile != "" {
+			attrs = append(attrs, slog.String("binlog_file", st.BinlogFile))
+		}
+		if st.BinlogPos > 0 {
+			attrs = append(attrs, slog.Uint64("binlog_pos", st.BinlogPos))
+		}
+	default:
+		if st.GTIDSet != "" {
+			attrs = append(attrs, slog.String("gtid_set", st.GTIDSet))
+		}
+		if st.BinlogFile != "" {
+			attrs = append(attrs, slog.String("binlog_file", st.BinlogFile))
+		}
+		if st.BinlogPos > 0 {
+			attrs = append(attrs, slog.Uint64("binlog_pos", st.BinlogPos))
+		}
+	}
+	return attrs
 }
 
 func rowsEventTypeLabel(ev *replication.RowsEvent) string {
