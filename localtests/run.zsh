@@ -58,7 +58,7 @@ compare_count() {
 table_exists_dest() {
   local db="$1"
   local table="$2"
-  mysql_dest -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema= AND table_name=;"
+  mysql_dest -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${db}' AND table_name='${table}';"
 }
 
 usage() {
@@ -74,18 +74,18 @@ Commands:
   batch              Run batch workload on source
   ddl                Run DDL workload on source
   filter             Run filter workload on source
-  filter-ddl          Run filtered DDL workload on source
+  filter-ddl         Run filtered DDL workload on source
   reserved           Run reserved-name workload on source
   schema             Run schema change workload on source
   cross              Run cross-db workload on source
-  gtid-set            Print GTID executed from source
+  gtid-set           Print GTID executed from source
   pos                Print SHOW MASTER STATUS from source
-  check-basic         Compare counts for users/orders
-  check-reserved      Compare counts for reserved-name tables
-  check-schema        Verify users.nickname exists on dest
-  check-cross         Verify cross-db table exists and counts match
-  check-ddl-dropped   Verify ddl_tbl does not exist on dest
-  check-filter        Print allow/deny counts (manual verify)
+  check-basic        Compare counts for users/orders
+  check-reserved     Compare counts for reserved-name tables
+  check-schema       Verify users.nickname exists on dest
+  check-cross        Verify cross-db table exists and counts match
+  check-ddl-dropped  Verify ddl_tbl does not exist on dest
+  check-filter       Print allow/deny counts (manual verify)
 
 Environment overrides:
   MYSQL_SOURCE_HOST, MYSQL_SOURCE_PORT, MYSQL_DEST_HOST, MYSQL_DEST_PORT,
@@ -148,7 +148,7 @@ case "${cmd}" in
     compare_count gbs_reserved "user-log"
     ;;
   check-schema)
-    mysql_dest -N -e "SHOW COLUMNS FROM gbs_test.users LIKE nickname;"
+    mysql_dest -N -e "SHOW COLUMNS FROM gbs_test.users LIKE 'nickname';"
     ;;
   check-cross)
     compare_count gbs_cross cross_tbl
