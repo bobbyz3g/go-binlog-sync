@@ -1,5 +1,7 @@
 # go-binlog-sync (gbs)
 
+[中文说明](README.zh-CN.md)
+
 A MySQL/MariaDB binlog synchronization tool. It reads binlog events from a source MySQL instance and applies them to a destination instance in real time, enabling data replication.
 
 ## Features
@@ -13,7 +15,7 @@ A MySQL/MariaDB binlog synchronization tool. It reads binlog events from a sourc
 
 ## Requirements
 
-- Go 1.25+
+- Go 1.26
 - Source MySQL must have binlog enabled with `binlog_format=ROW`
 
 ## Build
